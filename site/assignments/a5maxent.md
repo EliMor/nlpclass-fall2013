@@ -9,7 +9,8 @@ root: "../"
 * Written portions are found throughout the assignment, and are clearly marked.
 * Coding portions must be turned in via GitHub using the tag `a5`.
 
-<span><span style="color: red; font-weight: bold">UPDATE (11/5):</span> nlpclass-fall2013 dependency changed to version 0009</span>
+&nbsp;<span><span style="color: red; font-weight: bold">UPDATE (11/5):</span> nlpclass-fall2013 dependency changed from version 0007 to 0008</span>  
+&nbsp;<span><span style="color: red; font-weight: bold">UPDATE (11/12):</span> nlpclass-fall2013 dependency changed to version 0009</span>
 
 
 ## Overview
