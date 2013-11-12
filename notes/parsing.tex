@@ -295,7 +295,6 @@
 
 
 
-\newpage
 \section{Probabilistic Context-Free Grammars (PCFG)}
 
 \begin{itemize}
@@ -538,6 +537,22 @@ Likelihood of a (parsed) sentence
 \end{itemize}
 
 
+
+\section{Parsing}
+
+Top-Down
+\begin{itemize}
+  \item Never try to build tree that doesn't make a sentence.
+  \item Waste time exploring trees that don't end up with the correct words.
+\end{itemize}
+
+Bottom-Up
+\begin{itemize}
+  \item Never make a tree that doesn't start with the right words.
+  \item Waste time exploring trees that don't make a sentence.
+\end{itemize}
+
+
 \section{Parsing with P-CKY}
 
 Find the mostly likely parse tree $t$ for the sentence $w_0...w_n$
@@ -644,18 +659,23 @@ Initialize \texttt{back} to be an N+1 x N+1 array (for backpointers) \\
 	}
 	\BlankLine
 	\textit{// Unary Rules} \\
-	\For{$B \leftarrow$ \texttt{table[i,j]}}{	    
-	    \textit{// B is the root of a sub-tree covering the span $w_i...w_{j-1}$} \\
-	    \For{$A \leftarrow$ \text{NT (or restrict to just non-POS, non-compound tags if convenient)}}{
-	      \textit{// A is a potential root for the subtree spanning $w_i...w_{j-1}$} \\
-	      \If{$p(B \mid A) > 0.0$}{
-	        \textit{// $A \rightarrow B$ is a valid rule} \\
-	        $s = p(B \mid A)~\cdot $ \texttt{table[i,j][B]} \\
-	        \If{\texttt{table[i,j]} doesn't contain $A$ \textbf{OR} \texttt{table[i,j][A]} $< s$}{
-	          \textit{// Either we haven't seen a valid subtree coverting i to j with root A, } \\
-	          \textit{// ~~or this new subtree has a higher score} \\
-	          \texttt{table[i,j][A]} = $s$ \\
-	          \texttt{back[i,j][A]} = $B$ \\
+	done = false \\
+	\While{!done}{
+	  done = true \\
+	  \For{$B \leftarrow$ \texttt{table[i,j]}}{
+	      \textit{// B is the root of a sub-tree covering the span $w_i...w_{j-1}$} \\
+	      \For{$A \leftarrow$ \text{NT (or restrict to just non-POS, non-compound tags if convenient)}}{
+	        \textit{// A is a potential root for the subtree spanning $w_i...w_{j-1}$} \\
+	        \If{$p(B \mid A) > 0.0$}{
+	          \textit{// $A \rightarrow B$ is a valid rule} \\
+	          $s = p(B \mid A)~\cdot $ \texttt{table[i,j][B]} \\
+	          \If{\texttt{table[i,j]} doesn't contain $A$ \textbf{OR} \texttt{table[i,j][A]} $< s$}{
+	            \textit{// Either we haven't seen a valid subtree coverting i to j with root A, } \\
+	            \textit{// ~~or this new subtree has a higher score} \\
+	            \texttt{table[i,j][A]} = $s$ \\
+	            \texttt{back[i,j][A]} = $B$ \\
+	            done = false \textit{ // if we added a new NT, then re-check} \\
+	          }
 	        }
 	      }
 	    }

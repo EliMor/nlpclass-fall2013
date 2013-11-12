@@ -461,17 +461,14 @@ val s4 = "oh no ! what's happening ? ahhhhhhh !!!!!!".split(" ").toVector
 pcfg.parse(s4).fold("None")(_.pretty)
 S
   NP
-    D oh
+    A oh
     N no
+    A !
+    N what's
   VP
-    V !
-    NP
-      D what's
-      N happening
-    PP
-      P ?
-      NP
-        D ahhhhhhh
-        N !!!!!!
+    A happening
+    N ?
+    A ahhhhhhh
+    N !!!!!!
 {% endhighlight %}
 
