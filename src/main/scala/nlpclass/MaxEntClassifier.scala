@@ -75,22 +75,15 @@ class MaxEntModelTrainer(
   private[this]type Label = String
   private[this]type Value = String
 
-  def train(instances: Vector[(Label, Vector[(Feature, Value)])]): Classifier[Label, Feature, Value] = {
+  def train(instances: Vector[(Label, Vector[(Feature, Value)])]): MaxEntModel = {
     val eventStream = new IteratorEventStream(
       instances.iterator.map {
         case (label, featureValues) =>
           val context = MaxEntClassifier.featureValueListAsContext(featureExtender(featureValues))
           new Event(label, context.toArray)
       })
-    new MaxEntModel(GIS.trainModel(eventStream, maxIterations, cutoff, sigma))
+    new MaxEntModel(GIS.trainModel(eventStream, maxIterations, cutoff, sigma), featureExtender)
   }
-
-  def trainFromFile(trainFilename: String) = {
-    val datafr = new FileReader(new File(trainFilename))
-    val eventStream = new BasicEventStream(new PlainTextByLineDataStream(datafr), ",")
-    new MaxEntModel(GIS.trainModel(eventStream, maxIterations, cutoff, sigma))
-  }
-
 }
 
 object MaxEntClassifier {

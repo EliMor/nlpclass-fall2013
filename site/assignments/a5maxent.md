@@ -9,7 +9,7 @@ root: "../"
 * Written portions are found throughout the assignment, and are clearly marked.
 * Coding portions must be turned in via GitHub using the tag `a5`.
 
-<span><span style="color: red; font-weight: bold">UPDATE (11/5):</span> nlpclass-fall2013 dependency changed from version 0007 to 0008</span>
+<span><span style="color: red; font-weight: bold">UPDATE (11/5):</span> nlpclass-fall2013 dependency changed to version 0009</span>
 
 
 ## Overview
@@ -23,7 +23,7 @@ There are 100 points total in this assignment. Point values for each problem/sub
 
 The classes used here will extend traits that are found in the `nlpclass-fall2013` dependency.  In order to get these updates, you will need to edit your root `build.sbt` file and update the version of the dependency:
 
-    libraryDependencies += "com.utcompling" % "nlpclass-fall2013_2.10" % "0008" changing()
+    libraryDependencies += "com.utcompling" % "nlpclass-fall2013_2.10" % "0009" changing()
 
 If you use Eclipse, then after you modify the dependency you will once again have to run `sbt "eclipse with-source=true"` and refresh your project in Eclipse.
 
