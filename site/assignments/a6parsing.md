@@ -85,7 +85,7 @@ scala> TreeViz.drawTree(t)
 {% endhighlight %}
 
 
-## Part 2: Chomsky Normal Form 
+## Part 2: Chomsky Normal Form (10 points)
 
 ### To CNF
 
@@ -184,7 +184,7 @@ Assume the following three-sentence dataset:
 
 
 
-## Part 3: Likelihood of a Parsed Sentence
+## Part 3: Likelihood of a Parsed Sentence (10 points)
 
 You will need to create a class `nlp.a6.PcfgParser` that extends the trait `nlpclass.Parser`.  For this part, you should implement the `likelihood` method (you can use `???` for the other methods to prevent compiler errors):
 
@@ -205,9 +205,9 @@ This method should take a `Tree` as input and return the likelihood of that tree
 In order to calculate the likelihood, you will need two probability distributions:
 
 * The conditional probability distribution `\( p(\beta \mid A) \)` for non-terminal A and production `\( \beta \)`
-* The probability distribution over possible root tree nodes `\( p(\sigma) \)` for production `\( \sigma \)`
+* The probability distribution over possible root tree nodes p(S) for non-terminal S
 
-Since we will need the grammar to be in CNF for parsing, you should assume (or ensure?) that these distributions are in CNF.  In other words, `\( \beta \)` and `\( \sigma \)` can only have three forms: a pair of nonterminals (B C), a single nonterminal (B), or a single terminal (*w*).
+Since we will need the grammar to be in CNF for parsing, you should assume (or ensure?) that these distributions are in CNF.  In other words, `\( \beta \)` can only have three forms: a pair of nonterminals (B C), a single nonterminal (B), or a single terminal (*w*).
 
 The likelihood of a parsed sentence is computed as the product of all productions in the tree.  Additionally, you must take into consideration the likelihood of the tree's root.
 
@@ -227,12 +227,12 @@ For the following parsed sentence:
 
 
 
-## Part 4: Unsmoothed PCFG Parser Trainer
+## Part 4: Unsmoothed PCFG Parser Trainer (10 points)
 
 To initialize the probability distributions for the PcfgParser from the Maximum Likelihood Estimate (MLE), you will implement a class `nlp.a6.UnsmoothedPcfgParserTrainer` that extends `nlpclass.ParserTrainer` and implements a method called `train`:
 
 {% highlight scala %}
-class UnsmoothedPcfgParserTrainer(...) extends ParserTrainer {
+class UnsmoothedPcfgParserTrainer() extends ParserTrainer {
   def train(trees: Vector[Tree]): PcfgParser = {
     // your code here
   }
@@ -250,7 +250,7 @@ To check your implementation, assume the following dataset (`trees2`):
 And you should be able to do this:
 
 {% highlight scala %}
-val trainer = new UnsmoothedPcfgParserTrainer(...)
+val trainer = new UnsmoothedPcfgParserTrainer()
 val pcfg = trainer.train(trees2)
 val s1 = "(S (NP (D the) (N dog)) (VP (V walks) (NP (D the) (N man)))))"
 pcfg.likelihood(Tree.fromString(s1)) // -3.1780538303479453
@@ -259,7 +259,7 @@ pcfg.likelihood(Tree.fromString(s2)) // -Infinity
 {% endhighlight %}
 
 
-## Part 5: Parsing with P-CKY
+## Part 5: Parsing with P-CKY (30 points)
 
 For this part you will implement the `parse` method on `PcfgParser`:
 
@@ -267,7 +267,7 @@ For this part you will implement the `parse` method on `PcfgParser`:
 def parse(tokens: Vector[String]): Option[Tree]
 {% endhighlight %}
 
-This method takes a sentence (as a sequence of tokens), runs the Probabilitic CKY algorithm, and returns a `Tree` representing the most likely parse of that sentence, if there is one, and returns `None` if there is no valid parse of the sentence.  Be sure to convert the tree back from CNF before returning it.
+This method takes a sentence (as a sequence of tokens), runs the Probabilistic CKY algorithm, and returns a `Tree` representing the most likely parse of that sentence, if there is one, and returns `None` if there is no valid parse of the sentence.  Be sure to convert the tree back from CNF before returning it.
 
 Using this dataset (`trees3`):
 
@@ -280,7 +280,7 @@ Using this dataset (`trees3`):
 you should see this behavior without smoothing:
 
 {% highlight scala %}
-scala> val trainer = new UnsmoothedPcfgParserTrainer(...)
+scala> val trainer = new UnsmoothedPcfgParserTrainer()
 scala> val pcfg = trainer.train(trees3)
 
 scala> val s1 = "the dog walks the man".split(" ").toVector
@@ -329,7 +329,7 @@ None
 
 
 
-## Part 6: Generating Text
+## Part 6: Generating Text (10 points)
 
 Since a PCFG is a generative model, we can use it to generate sentences.  For this part, you will implement the `generate` method on `PcfgParser`.  The method should return a `Tree` object 
 
@@ -337,7 +337,7 @@ Since a PCFG is a generative model, we can use it to generate sentences.  For th
 def generate(): Tree
 {% endhighlight %}
 
-Your method should first sample some non-terminal A from the distribution `\( p(\sigma) \)` over possible start non-terminals.  Then, it should sample some `\( \beta \)` from `\( p(\beta \mid A) \)`.  For each non-terminal in `\( \beta \)`, you should recursively sample a next production until all paths result in terminal nodes (words).
+Your method should first sample some non-terminal A from the distribution p(S) over possible start non-terminals.  Then, it should sample some `\( \beta \)` from `\( p(\beta \mid A) \)`.  For each non-terminal in `\( \beta \)`, you should recursively sample a next production until all paths result in terminal nodes (words).
 
 Be sure to convert your generated tree back from CNF before returning it.
 
@@ -379,16 +379,99 @@ and, again, generate trees.  But with this grammar, all trees will have number a
 
 
 
+## Part 7: Add-λ Smoothed PCFG (30 points)
 
-## Part 7: Add-λ Smoothed PCFG
+We would ultimately like for our parser to be able to return a "best guess" tree for *any* sentence that it is given.  To accomplish this, you will implement add-λ smoothing on the PCFG.
 
-We would ultimately like for our parser to be able to return a "best guess" tree for *any* sentence that it is given.
+Add-λ smoothing works much the same as we've seen in previous assignments.  However, there are a couple special cases in the conditional probability distribution `\( p(\beta \mid A) \)` that need to be handled to avoid some problematic pitfalls in the parser.
 
-Ensure that all compound non-terminals created during CNF converion are left unsmoothed.  After all, "{A+N}" should never produce anything other than "A N".  Also ensure that no compund non-terminal is given a non-zero probability in the start symbol distribution since a compound non-terminal must always have a parent.
+First, consider that in CNF production rules can have three forms:
 
+* A non-terminal yielding exactly two non-terminals: A → B C
+* A non-terminal yielding exactly one non-terminals: A → B
+* A non-terminal yielding exactly one terminal: A → w
 
+Further, a non-terminal rule root A can take one of three forms:
 
-## Part 8: The Penn Treebank
+* A part-of-speech tag (D, N, V, ...)
+* A phrase tag (S, NP, VP, ...)
+* A compound non-terminal tag introduced by CNF conversion ({A+N}, {N+PP}, {NP+PP}, ...)
 
+All production rules in the grammar will be a combinaion of these two lists.  However, there are some clear limitations on how things can be combined, and these limitations must be controlled for when smoothing.
 
+1. Part-of-speech tags can only yield terminals.  This is a function of the way our grammar works: POS tags are always the bottom layer of the tree, and each POS tag produces just one word.  Therefore, you must prevent POS tag non-terminals from smoothing over anything except terminals.  Give "w" productions non-zero probabilities but all "B C" and "B" productions must have probability zero.
+
+2. Only part-of-speech tags may yield terminals (words).  This is the flip side of 1.  You must prevent any non-POS non-terminal (which may be a normal phrase tag or a compound non-terminal tag) from yielding a terminal (word).  Give all "B C" and "B" productions non-zero probabilities but all "w" productions probability zero.
+
+3. A compound tag {X+Y} can *only* yield the production "X Y".  Therefore, it should *not* be smoothed.  
+
+Finally, we must smooth the probability distribution p(S) over potential start symbols.  However, we know that a compound non-terminal {X+Y} can never be a start symbol because it can only ever be used when its parent has more than two children.  Since compound tags must have a parent, they should receive a probability of zero in the start-symbol distribution.
+
+In summary:
+
+`\[
+  \begin{align}
+    p(w \mid P) &= \frac{C(P \rightarrow w) + \lambda}{C(P) + \lambda|V|}
+      \stackrel{\hbox{
+        where $P$ is a POS tag and $V$ is the set of all known words
+      }}{\hbox{
+      }}  \\
+    p(\beta \mid A) &= \frac{C(A \rightarrow \beta) + \lambda}{C(A) + \lambda(|N|+|N|^2)}
+      \stackrel{\hbox{
+        where $A$ is a non-compound non-terminal and $N$ is the
+      }}{\hbox{
+        set of all non-terminals (including compounds and POS)
+      }}  \\
+    p(X~Y \mid \{X\text{+}Y\}) &= 1.0 \\
+    p(A) &= \frac{C(A\text{ is the root of the tree})+\lambda}{\text{(# of trees in corpus)}+\lambda(|N|-|C|)}
+      \stackrel{\hbox{
+        where $C$ is the set of all 
+      }}{\hbox{
+        compound non-terminals
+      }} 
+  \end{align}
+\]`
+
+> **Written Answer (a):** Why do we have `\( |N|+|N|^2 \)` in the denominator of the second equation?
+
+Note that you will never need to condition on an unknown non-terminal since the parser is not able to invent new non-terminals.  Additionally,   It principle it would be possible to allow for arbirary compounds {X+Y} for any X and Y, but doing so causes a huge blowup in the number of possible parses.
+
+When trained on the corpus `trees3`, you should see this behavior:
+
+{% highlight scala %}
+val trainer = new AddLambdaPcfgParserTrainer(0.1)
+val pcfg = trainer.train(trees3)
+
+val s1 = "(S (NP (D the) (N dog)) (VP (V walks) (NP (D the) (N man)))))"
+pcfg.likelihood(Tree.fromString(s1))) // -10.243563630152428
+
+val s2 = "(S (NP (D a) (N cat)) (VP (V runs)))"
+pcfg.likelihood(Tree.fromString(s2)) // -15.661001571843844
+
+val s3 = "a fast cat runs".split(" ").toVector
+pcfg.parse(s3).fold("None")(_.pretty)
+S
+  NP
+    D a
+    A fast
+    N cat
+  VP V runs
+
+val s4 = "oh no ! what's happening ? ahhhhhhh !!!!!!".split(" ").toVector
+pcfg.parse(s4).fold("None")(_.pretty)
+S
+  NP
+    D oh
+    N no
+  VP
+    V !
+    NP
+      D what's
+      N happening
+    PP
+      P ?
+      NP
+        D ahhhhhhh
+        N !!!!!!
+{% endhighlight %}
 

@@ -65,7 +65,7 @@ object Tree {
             Some(TreeNode(nonterminal, children))
           else
             None
-        case word => Some(TreeNode(cleanWord(word)))
+        case word => Some(TreeNode(word))
       }
     }
 
