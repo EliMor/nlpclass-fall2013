@@ -9,6 +9,13 @@ trait Tree {
     else children.flatMap(_.sentence)
   }
 
+  def isPos = children match { case Vector(c) => c.isLeaf; case _ => false }
+  def isLeaf = children.isEmpty
+
+  def rewriteLabels(f: Tree => String): TreeNode = {
+    TreeNode(f(this), children.map(_.rewriteLabels(f)))
+  }
+
   override def toString() = {
     children match {
       case Vector(child) if child.children.isEmpty => f"($label ${child.label})"

@@ -22,6 +22,8 @@
 \usepackage{multirow}
 \usepackage[all]{xy}
 \usetikzlibrary{arrows,snakes,backgrounds,patterns,matrix,shapes,fit,calc,shadows,plotmarks}
+\usepackage[ruled,vlined]{algorithm2e}
+\DeclareMathOperator*{\argmax}{argmax}
 
 
 \newcommand{\ra}{\ensuremath{\rightarrow}}
@@ -551,9 +553,10 @@ Find the mostly likely parse tree $t$ for the sentence $w_0...w_n$
 Chomsky Normal Form (CNF)
 \begin{itemize}
   \item CKY requires that the grammar be in CNF
-  \item All productions must be either:
+  \item All productions must be one of:
 	\begin{itemize}
 	  \item Non-terminal producing exactly 2 non-terminals: A \ra\ B C\\
+	        Non-terminal producing exactly 1 non-terminal: A \ra\ B\\
 	        Non-terminal producing exactly 1 terminal: A \ra\ \textit{w}
 	\end{itemize}
   \item Any CFG can be convered to CNF
@@ -564,17 +567,133 @@ Chomsky Normal Form (CNF)
 		  \item Repeat as necessary until you just have  A \ra\ B X
 		  \item NP \ra\ D Adj N becomes\\  NP \ra\ D $[$Adj+N$]$ \\ $[$Adj+N$]$ \ra\ Adj N
 		\end{itemize}
-	  \item Producing just one nonterminal:  ``A \ra\ B''
-		\begin{itemize}
-		  \item Replace all rules rooted by B with A
-		  \item A rule ``B \ra\ C D'' would become ``A(B) \ra\ C D''
-		  \item Repeat as necessary until no more unary rules exist
-		  \item Rules ``VP \ra\ V'', ``V \ra\ \textit{walk}'', and ``V \ra\ \textit{bark}'' becomes \\ 
-		        ``VP(V) \ra\ \textit{walk}'' and ``VP(V) \ra\ \textit{bark}''
-		\end{itemize}
 	  \item For our trees we should never have terminals and nonterminals mixed in productions since all terminals a produced by unary rules from POS tags, which never produce anything other than terminals. (But if we needed to we could create dummy non-terminals for those terminals.)
 	\end{itemize}
 \end{itemize}
+
+
+P-CKY Idea
+
+\begin{enumerate}
+  \item Make a pass over the whole sentence, trying to find subtrees that explain spans within the sentence
+  \item Dynamic programming: store intermediate results in a chart
+  \item Start with the leftmost word.  For each non-terminal (NT), find the most plausible subtree that covers just that word.
+  \item Move to the next word
+    \begin{enumerate}
+	  \item[a.] Again, for each NT, find the most plausible subtree that covers just that word.
+	  \item[b.] Then, for each NT, find the most plausible subtree that covers both the word and the previous word.
+	  \item[c.] Same for the three-word span of the word and the previous two words.
+	  \item[d.] Continue until you have the entire span from the beginning of the sentence to the word.
+	  \item[e.] Then move to the next word and repeat.
+    \end{enumerate}
+  \item You are finished when you have, for each NT, the most plausible tree covering the entire span of the sentence.
+  \item Pick the root node that is most plausible considering the \textit{a priori} probability of an NT being the root of a sentence.
+\end{enumerate}
+
+
+
+P-CKY Algorithm
+
+
+\begin{itemize}
+  \item NT is the set of all non-terminals (including composites and POS tags)
+  \item $N$ = length of sentence $w_0...w_{N-1}$
+  \item \texttt{table[i,j][A]} is the best possible score for a subtree spanning words $w_i...w_{j-1}$ with $A$ as its root
+  \item \texttt{back[i,j][A] = (k,B,C)} indicates that the best possible subtree spanning words $w_i...w_{j-1}$ with $A$ as its root is comprised of a left subtree spanning words $w_i...w_{k-1}$ with $B$ as its root and a right subtree spannign words $w_k...w_{j-1}$ with $C$ as its root.
+\end{itemize}
+
+\begin{algorithm}[h]
+Initialize \texttt{table} to be an N+1 x N+1 array (for (best-so-far) scores) \\
+Initialize \texttt{back} to be an N+1 x N+1 array (for backpointers) \\
+\BlankLine
+\For{$j \leftarrow 1$ \KwTo $N$}{
+  \BlankLine
+  \textit{// Fill in the bottom of the chart (single-word spans):} \\
+    $i = j-1$ \;
+    \For{$A \leftarrow$ \text{NT (or restrict to just POS tags if convenient)}}{
+      \textit{// A is a potential POS tag for $w_i$} \\
+      \If{$p(w_i \mid A) > 0.0$}{
+         \textit{// $A \rightarrow w_i$ is a valid rule} \\
+         \texttt{table[i,j][a]} = $p(w_i \mid A)$ \\
+         \texttt{back[i,j][a]} = $w_i$ \\
+      }
+    }
+  \BlankLine
+  \textit{// Fill in the higher levels of the chart (multi-word spans)} \\
+  \For{$i \leftarrow j$-1 \textbf{downto} 0}{
+    \BlankLine
+    \textit{// Binary Rules (with $k$ as pivot)} \\
+    \For{$k \leftarrow i$+1 \KwTo $j$-1}{
+	  \For{$B \leftarrow$ \texttt{table[i,k]} and $C \leftarrow$ \texttt{table[k,j]}}{	    
+	    \textit{// B is the root of a sub-tree covering the span $w_i...w_{k-1}$} \\
+	    \textit{// C is the root of a sub-tree covering the span $w_k...w_{j-1}$} \\
+	    \For{$A \leftarrow$ \text{NT (or restrict to just non-POS tags if convenient)}}{
+	      \textit{// A is a potential root for the subtree spanning $w_i...w_{j-1}$} \\
+	      \If{$p(B~C \mid A) > 0.0$}{
+	        \textit{// $A \rightarrow B~C$ is a valid rule} \\
+	        $s = p(B~C \mid A)~\cdot $ \texttt{table[i,k][B]} $ \cdot $ \texttt{table[k,j][C]} \\
+	        \If{\texttt{table[i,j]} doesn't contain $A$ \textbf{OR} \texttt{table[i,j][A]} $< s$}{
+	          \textit{// Either we haven't seen a valid subtree coverting i to j with root A, } \\
+	          \textit{// ~~or this new subtree has a higher score} \\
+	          \texttt{table[i,j][A]} = $s$ \\
+	          \texttt{back[i,j][A]} = $(k,B,C)$ \\
+	        }
+	      }
+	    }
+	  }
+	}
+	\BlankLine
+	\textit{// Unary Rules} \\
+	\For{$B \leftarrow$ \texttt{table[i,j]}}{	    
+	    \textit{// B is the root of a sub-tree covering the span $w_i...w_{j-1}$} \\
+	    \For{$A \leftarrow$ \text{NT (or restrict to just non-POS, non-compound tags if convenient)}}{
+	      \textit{// A is a potential root for the subtree spanning $w_i...w_{j-1}$} \\
+	      \If{$p(B \mid A) > 0.0$}{
+	        \textit{// $A \rightarrow B$ is a valid rule} \\
+	        $s = p(B \mid A)~\cdot $ \texttt{table[i,j][B]} \\
+	        \If{\texttt{table[i,j]} doesn't contain $A$ \textbf{OR} \texttt{table[i,j][A]} $< s$}{
+	          \textit{// Either we haven't seen a valid subtree coverting i to j with root A, } \\
+	          \textit{// ~~or this new subtree has a higher score} \\
+	          \texttt{table[i,j][A]} = $s$ \\
+	          \texttt{back[i,j][A]} = $B$ \\
+	        }
+	      }
+	    }
+	  }
+  }
+}
+\caption{P-CKY}
+\end{algorithm}
+
+\begin{algorithm}[h]
+\BlankLine
+\textit{// Select the best root element while considering the prior over all potential root elements} \\
+root = $\displaystyle\argmax_{\substack{S \leftarrow \texttt{table[0,N]}}}$
+           \texttt{table[0,N][S]}~$\cdot~p(S)$
+
+\BlankLine
+\eIf{\texttt{table[0,N][root]}~$\cdot~p(root) = 0.0$}{
+  \textit{// There is no valid parse of the sentence}
+}{
+  FollowBackpointers(root, 0, N)
+}
+
+
+\BlankLine
+\BlankLine
+\BlankLine
+\BlankLine
+\textbf{Function} FollowBackpointers(A, i, j) : Tree \\
+  \BlankLine
+  ~~~~\texttt{back[i,j][A]} \textbf{match} \\
+  ~~~~~~~~\textbf{case} (k, B, C)  $\Rightarrow$ ~~~~ // Binary branch \\
+  ~~~~~~~~~~~~Tree(A, FollowBackpointers(B, i, k), FollowBackpointers(C, k, j)) \\
+  ~~~~~~~~\textbf{case} B   $\Rightarrow$ ~~~~ // Unary branch \\
+  ~~~~~~~~~~~~Tree(A, FollowBackpointers(B, i, j)) \\
+  ~~~~~~~~\textbf{case} $w$ $\Rightarrow$ ~~~~ // Terminal (word) \\
+  ~~~~~~~~~~~~Leaf($w$)
+\caption{Retrieve the best-parse tree from the backpointer table}
+\end{algorithm}
 
 
 \section{N-Best Parses}
