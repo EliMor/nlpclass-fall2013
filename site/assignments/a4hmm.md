@@ -379,6 +379,3 @@ When smoothing, you will apply the same technique as above.
       105   NNP     JJ
 
 (Mine runs in 7 sec.  Avg time to tag a sentence: 0.0004 sec)
-
-**NOTE:** Be sure to make use of your tag dictionary to contrain the smoothing of your emission distributions!  In other words, for each tag, only add λ to the words that appear in the tag dictionary with that tag.  To do this, it may be useful to "reverse" your tag dictionary.
-
