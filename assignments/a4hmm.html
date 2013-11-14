@@ -216,6 +216,8 @@ count  gold  model
   977   VBD     IN
   941    CC     IN</code></pre>
 
+<p>(Mine runs in 85 sec. Avg time to tag a sentence: 0.0212 sec)</p>
+
 <p><strong>It&#8217;s possible that your numbers won&#8217;t match this exactly since there could be some randomness in choosing equally-likely tags</strong></p>
 
 <blockquote>
@@ -294,6 +296,8 @@ count  gold  model
   142   VBG     NN
   136    JJ     DT</code></pre>
 
+<p>(Mine runs in 87 sec. Avg time to tag a sentence: 0.0216 sec)</p>
+
 <blockquote>
 <p><strong>Written Answer (a):</strong> Experiment with different values for <code>--lambda</code>. Report your findings on <strong>ptbtag/dev.txt</strong>.</p>
 </blockquote>
@@ -311,7 +315,7 @@ count  gold  model
   <span class='k'>def</span> <span class='n'>apply</span><span class='o'>(</span><span class='n'>w</span><span class='k'>:</span> <span class='kt'>Word</span><span class='o'>)</span><span class='k'>:</span> <span class='kt'>Set</span><span class='o'>[</span><span class='kt'>Tag</span><span class='o'>]</span> <span class='k'>=</span> <span class='n'>map</span><span class='o'>.</span><span class='n'>getOrElse</span><span class='o'>(</span><span class='n'>w</span><span class='o'>,</span> <span class='n'>allTags</span><span class='o'>)</span>
 <span class='o'>}</span>
 </code></pre></div>
-<p>You should update your <strong>trainer</strong> to have a parameter that determines whether a tag dictionary should be used. If this parameter says so, then the trainer should create a tag dictionary based on the training data. So the tag dictionary entry for a particular word will be the set of all tags that were seen with that word in the training data. If a word was never seen in the training corpus, then you should assume that it can take <em>any</em> tag.</p>
+<p>You should update your <strong>trainer</strong> to have a parameter that determines whether a tag dictionary should be used. If this parameter says so, then the trainer should create a tag dictionary based on the training data. So the tag dictionary entry for a particular word will be the set of all tags that were seen with that word in the training data. If a word was never seen in the training corpus, then you should assume that it can take <em>any</em> tag (except the special start or end tags). Also ensure that the only valid tag for the start word is the start tag and likewise for the end word/tag.</p>
 
 <p>You should also update your <strong>model</strong> to have the newly-constructed tag dictionary as a parameter for use during tagging. In other words, you should use the tag dictionary to restrict your search for the best tag for each word.</p>
 
@@ -326,76 +330,88 @@ count  gold  model
 <p>You should be able to run your code like this:</p>
 
 <pre><code>$ sbt &quot;run-main nlp.a4.Hmm --train ptbtag/train.txt --test ptbtag/dev.txt --tagdict true&quot;
-Accuracy: 90.28  (81043/89773)
+Accuracy: 84.02  (75430/89773)
 count  gold  model
- 1226   NNP     IN
+ 1238    DT     JJ
+ 1232   NNP     IN
+  793    NN     JJ
+  786    CC     IN
   717    DT     IN
+  698    TO     IN
+  632   VBD    VBN
+  443    JJ     IN
   434    CD     IN
-  420    JJ     IN
-  416    NN     IN
-  297    NN     JJ
-  280   VBD    VBN
-  266   POS    PRP
-  254   NNS     IN
-  241   VBN    VBD</code></pre>
+  430   NNP     NN</code></pre>
+
+<p>(Mine runs in 7 sec. Avg time to tag a sentence: 0.0005 sec)</p>
+
+<p><strong>It&#8217;s possible that your numbers won&#8217;t match this exactly since there could be some randomness in choosing equally-likely tags</strong></p>
 
 <blockquote>
 <p><strong>Written Answer (a):</strong> Why are the results so dramatically better when the tag dictionary is used on an unsmoothed HMM?</p>
 </blockquote>
 
-<pre><code>$ sbt &quot;run-main nlp.a4.Hmm --train ptbtag/train.txt --test ptbtag/dev.txt --tagdict true --lambda 1.0&quot;
-Accuracy: 93.35  (83802/89773)
-count  gold  model
-  390   NNP   SBAR
-  384   NNP   NNPS
-  289    NN     JJ
-  201   VBD    VBN
-  159    NN    NNP
-  140    IN     RB
-  127    NN   SBAR
-  123    JJ   SBAR
-  123   VBN    VBD
-  117    JJ     NN</code></pre>
+<p>With smoothing, things are slightly trickier. If a word was unseen during training (ie, it doesn&#8217;t appear in the tag dictionary), then we still assume it can have any tag (except start/end). But if a word <em>is</em> in the tag dictionary, we want to restrict it accordingly, even after smoothing. This is not hard to represent in the tag dictionary, but our emission distribution maps from tags to words, not words to tags. Therefore, the emission distribution for a tag <em>t</em> is a smoothed distribution over all words whose tag dictionary entries contain <em>t</em>, as well as any words not appearing in the tag dictionary (since they must be allowed with any tag), and <em>specifically excluding</em> and words that appear in the tag dictionary but for which $t$ is not in their entry.</p>
 
-<p><strong>It&#8217;s possible that your numbers won&#8217;t match this exactly since there could be some randomness in choosing equally-likely tags</strong></p>
+<p>You should be able to run your smoothed code like this:</p>
+
+<pre><code>$ sbt &quot;run-main nlp.a4.Hmm --train ptbtag/train.txt --test ptbtag/dev.txt --tagdict true --lambda 1.0&quot;
+Accuracy: 93.34  (83794/89773)
+count  gold  model
+  386   NNP   SBAR
+  384   NNP   NNPS
+  290    NN     JJ
+  202   VBD    VBN
+  160    NN    NNP
+  140    IN     RB
+  126    NN   SBAR
+  125   VBN    VBD
+  122    JJ   SBAR
+  120    JJ     NN</code></pre>
+
+<p>(Mine runs in 8 sec. Avg time to tag a sentence: 0.0005 sec)</p>
 
 <h2 id='problem_4_pruned_tag_dictionary_not_required'>Problem 4: Pruned Tag Dictionary (NOT REQUIRED)</h2>
 
-<p>Unfortunately, it is the case that the Penn Treebank corpus contains a large number of tagging mistakes. As a For example, the word <em>the</em> is actually tagged with several tags other than <em>DT</em>, even though it is reasonable for the tagger to always assign <em>DT</em> to <em>the</em>. These mistakes can lead to confusion in the tagger when it is trying to handle ambiguous words.</p>
+<p>Unfortunately, it is the case that the Penn Treebank corpus contains a large number of tagging mistakes. As an example, the word <em>the</em> is actually tagged with several tags other than <em>DT</em>, even though it is reasonable for the tagger to always assign <em>DT</em> to <em>the</em>. These mistakes can lead to confusion in the tagger when it is trying to handle ambiguous words.</p>
 
 <p>To help the tagger, we can implement a simple strategy for cleaning up the tag dictionary: remove low-probability tags. So, for a given word, we can remove any tags that occur less than, for example, 10% of the time. This will remove tags that were mistakenly used on a word, since those mistakes will likely be seen very few times relative to the number of times the word appears.</p>
 
-<p>You should add a parameter <code>--tdcutoff</code> that is used to determine the minimum percentage that a tag must occur. So <code>--tdcutoff 0.1</code> will remove any tags that occur less than 10% of the time for a given word.</p>
+<p>You should add a parameter <code>--tdcutoff</code> that is used to determine the minimum percentage that a tag must occur. So <code>--tdcutoff 0.1</code> will remove any tags that occur less than 10% of the time for a given word. (If the <code>--tdcutoff</code> parameter is given, but <code>--tagdict</code> is not, then assume <code>--tagdict</code> is <code>true</code>.)</p>
 
 <pre><code>$ sbt &quot;run-main nlp.a4.Hmm --train ptbtag/train.txt --test ptbtag/dev.txt --tagdict true --tdcutoff 0.1&quot;
-Accuracy: 91.35  (82011/89773)
+Accuracy: 91.35  (82009/89773)
 count  gold  model
  1226   NNP     IN
-  456   VBD    VBN
+  455   VBD    VBN
   436    JJ     IN
   434    CD     IN
   420    NN     IN
-  394    NN     JJ
+  393    NN     JJ
   264    VB     NN
   254   NNS     IN
-  215    RB     IN
-  168   NNP     JJ
+  217    RB     IN
+  168   NNP     JJ</code></pre>
 
-$ sbt &quot;run-main nlp.a4.Hmm --train ptbtag/train.txt --test ptbtag/dev.txt --tagdict true --tdcutoff 0.1 --lambda 1.0&quot;
-Accuracy: 93.41  (83860/89773)
+<p>(Mine runs in 7 sec. Avg time to tag a sentence: 0.0004 sec)</p>
+
+<p>When smoothing, you will apply the same technique as above.</p>
+
+<pre><code>$ sbt &quot;run-main nlp.a4.Hmm --train ptbtag/train.txt --test ptbtag/dev.txt --tagdict true --tdcutoff 0.1 --lambda 1.0&quot;
+Accuracy: 93.40  (83846/89773)
 count  gold  model
-  469   NNP   NNPS
-  312    NN     JJ
-  250   NNP     LS
-  210   VBD    VBN
-  157    NN    NNP
-  144   VBN    VBD
-  124    IN     RB
-  117    JJ     NN
-  106    RB     IN
-  103   VBP     VB</code></pre>
+  470   NNP   NNPS
+  313    NN     JJ
+  257   NNP     LS
+  212   VBD    VBN
+  159    NN    NNP
+  143   VBN    VBD
+  126    IN     RB
+  121    JJ     NN
+  108    RB     IN
+  105   NNP     JJ</code></pre>
 
-<p><strong>NOTE:</strong> Be sure to make use of your tag dictionary to contrain the smoothing of your emission distributions! In other words, for each tag, only add λ to the words that appear in the tag dictionary with that tag. To do this, it may be useful to &#8220;reverse&#8221; your tag dictionary.</p>
+<p>(Mine runs in 7 sec. Avg time to tag a sentence: 0.0004 sec)</p>
       </div>
       <div id='footer'></div>
     </div>
